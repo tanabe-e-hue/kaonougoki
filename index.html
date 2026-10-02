@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>多機能VOCA（写真・イラスト変更対応版）</title>
+  <title>項目選択モード VOCA（イラスト＋文字対応）</title>
   <!-- MediaPipe Face Mesh & Camera Utils -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
@@ -48,7 +48,7 @@
     .preset-btns { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
     .preset-btn {
       background: #333; color: #fff; border: 1px solid #666;
-      padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold;
+      padding: 10px 18px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 1rem;
     }
     .preset-btn:hover { background: #0d6efd; border-color: #0d6efd; }
 
@@ -101,7 +101,7 @@
     }
 
     /* ------------------------------
-       2. 操作画面
+       2. 操作画面（項目モード）
     ------------------------------ */
     #play-screen {
       flex-direction: column;
@@ -138,11 +138,11 @@
     .play-container.mode-3 { grid-template-columns: 1fr 1fr 1fr; }
     .play-container.mode-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
 
-    /* SVGによるアラウンド枠線アニメーション */
+    /* カード・SVGアニメーション構造 */
     .card-wrapper {
       position: relative;
-      width: 60%;
-      height: 50%;
+      width: 65%;
+      height: 55%;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -158,6 +158,7 @@
       cursor: pointer;
       position: relative;
       z-index: 1;
+      padding: 15px;
     }
 
     .border-svg {
@@ -183,43 +184,53 @@
       transition: stroke-dashoffset 0s linear;
     }
 
-    /* 2秒間の枠周回アニメーション */
+    /* 2秒間の囲みアニメーション */
     .card-wrapper.focusing .border-progress {
       stroke-dashoffset: 0;
       transition: stroke-dashoffset 2s linear;
     }
     .card-wrapper.focusing .card {
-      transform: scale(1.03);
+      transform: scale(1.04);
     }
 
-    .card img { max-width: 65%; max-height: 50%; object-fit: contain; margin-bottom: 10px; }
-    .card .label { font-size: 2rem; font-weight: bold; color: #ffffff; text-align: center; }
+    .card img {
+      max-width: 60%;
+      max-height: 55%;
+      object-fit: contain;
+      margin-bottom: 15px;
+    }
+    .card .label {
+      font-size: 2.2rem;
+      font-weight: bold;
+      color: #ffffff;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
 
   <!-- ==================== 1. 初期設定画面 ==================== -->
   <div id="setup-screen" class="screen active">
-    <h1>多機能VOCA 設定画面</h1>
+    <h1>項目選択モード VOCA 設定</h1>
 
     <div class="setup-card">
-      <h2>1. 選択肢の数</h2>
+      <h2>1. 画面に表示する項目の数</h2>
       <div class="option-count-selector">
-        <label><input type="radio" name="count" value="2" checked onchange="changeCount(2)"> 2択</label>
-        <label><input type="radio" name="count" value="3" onchange="changeCount(3)"> 3択</label>
-        <label><input type="radio" name="count" value="4" onchange="changeCount(4)"> 4択</label>
+        <label><input type="radio" name="count" value="2" checked onchange="changeCount(2)"> 2項目</label>
+        <label><input type="radio" name="count" value="3" onchange="changeCount(3)"> 3項目</label>
+        <label><input type="radio" name="count" value="4" onchange="changeCount(4)"> 4項目</label>
       </div>
 
-      <h2>2. サンプルプリセットの選択</h2>
+      <h2>2. 項目カテゴリのサンプルセット</h2>
       <div class="preset-btns">
-        <button class="preset-btn" onclick="applyPreset('fruit')">🍎 果物セット</button>
-        <button class="preset-btn" onclick="applyPreset('color')">🎨 色セット</button>
-        <button class="preset-btn" onclick="applyPreset('animal')">🐶 動物セット</button>
+        <button class="preset-btn" onclick="applyPreset('requests')">🙋‍♂️ 要望（お水・トイレ等）</button>
+        <button class="preset-btn" onclick="applyPreset('feelings')">😊 気持ち（うれしい等）</button>
+        <button class="preset-btn" onclick="applyPreset('body')">🩺 身体・体調（痛い等）</button>
       </div>
     </div>
 
     <div class="setup-card">
-      <h2>3. 各枠の文字・写真・イラスト設定</h2>
+      <h2>3. 各項目の文字とイラスト設定</h2>
       <div class="item-config-grid" id="config-grid"></div>
     </div>
 
@@ -238,30 +249,31 @@
 
   <script>
     let currentCount = 2;
-    const DWELL_TIME_MS = 2000; // 2秒
+    const DWELL_TIME_MS = 2000; // 2秒確定
 
+    // 項目モード用サンプル定義（イラスト＋文字）
     const presets = {
-      fruit: [
-        { text: 'りんご', img: 'https://via.placeholder.com/200/ff4d4d/FFFFFF?text=りんご' },
-        { text: 'みかん', img: 'https://via.placeholder.com/200/ffa500/FFFFFF?text=みかん' },
-        { text: 'ぶどう', img: 'https://via.placeholder.com/200/8a2be2/FFFFFF?text=ぶどう' },
-        { text: 'バナナ', img: 'https://via.placeholder.com/200/ffd700/FFFFFF?text=バナナ' }
+      requests: [
+        { text: 'お水', img: 'https://via.placeholder.com/250/17a2b8/FFFFFF?text=💧+お水' },
+        { text: 'トイレ', img: 'https://via.placeholder.com/250/ffc107/000000?text=🚻+トイレ' },
+        { text: 'テレビ', img: 'https://via.placeholder.com/250/6c757d/FFFFFF?text=📺+テレビ' },
+        { text: 'おやすみ', img: 'https://via.placeholder.com/250/6f42c1/FFFFFF?text=🌙+おやすみ' }
       ],
-      color: [
-        { text: 'あか', img: 'https://via.placeholder.com/200/ff0000/FFFFFF?text=赤' },
-        { text: 'あお', img: 'https://via.placeholder.com/200/0000ff/FFFFFF?text=青' },
-        { text: 'きいろ', img: 'https://via.placeholder.com/200/ffff00/000000?text=黄' },
-        { text: 'みどり', img: 'https://via.placeholder.com/200/008000/FFFFFF?text=緑' }
+      feelings: [
+        { text: 'うれしい', img: 'https://via.placeholder.com/250/28a745/FFFFFF?text=😊+うれしい' },
+        { text: 'かなしい', img: 'https://via.placeholder.com/250/007bff/FFFFFF?text=😢+かなしい' },
+        { text: 'たのしい', img: 'https://via.placeholder.com/250/fd7e14/FFFFFF?text=😄+たのしい' },
+        { text: 'つかれた', img: 'https://via.placeholder.com/250/6c757d/FFFFFF?text=😫+つかれた' }
       ],
-      animal: [
-        { text: 'いぬ', img: 'https://via.placeholder.com/200/d2691e/FFFFFF?text=いぬ' },
-        { text: 'ねこ', img: 'https://via.placeholder.com/200/708090/FFFFFF?text=ねこ' },
-        { text: 'うさぎ', img: 'https://via.placeholder.com/200/ffb6c1/000000?text=うさぎ' },
-        { text: 'くま', img: 'https://via.placeholder.com/200/8b4513/FFFFFF?text=くま' }
+      body: [
+        { text: 'いたい', img: 'https://via.placeholder.com/250/dc3545/FFFFFF?text=⚡+いたい' },
+        { text: 'かゆい', img: 'https://via.placeholder.com/250/e83e8c/FFFFFF?text=✋+かゆい' },
+        { text: 'あつい', img: 'https://via.placeholder.com/250/ff4500/FFFFFF?text=☀️+あつい' },
+        { text: 'さむい', img: 'https://via.placeholder.com/250/20c997/FFFFFF?text=❄️+さむい' }
       ]
     };
 
-    let items = [...presets.fruit];
+    let items = [...presets.requests];
 
     let camera = null;
     let faceMesh = null;
@@ -285,7 +297,6 @@
       if (savedItems) items = JSON.parse(savedItems);
     }
 
-    // 設定画面の描画（ファイル選択・写真設定機能）
     function renderSetupForm() {
       const grid = document.getElementById('config-grid');
       grid.innerHTML = '';
@@ -293,21 +304,21 @@
         const box = document.createElement('div');
         box.className = 'item-config-box';
         box.innerHTML = `
-          <h3>枠 ${i + 1}</h3>
+          <h3>項目 ${i + 1}</h3>
           <label>表示・読み上げテキスト:</label>
           <input type="text" value="${items[i].text}" onchange="items[${i}].text=this.value">
           
-          <label>写真・イラストの指定:</label>
+          <label>イラスト・写真の設定:</label>
           <div class="file-input-wrapper">
             <input type="file" id="file-input-${i}" accept="image/*" style="display:none;" onchange="updateImage(${i}, this)">
             <button type="button" class="file-input-btn" onclick="document.getElementById('file-input-${i}').click()">
-              📷 端末から写真・画像を選択
+              📷 イラスト・画像を選択
             </button>
           </div>
 
           <div class="preview-container">
             <img src="${items[i].img}" id="preview-${i}" class="preview-thumb">
-            <span style="font-size:0.85rem; color:#aaa;">プレビュー表示</span>
+            <span style="font-size:0.85rem; color:#aaa;">現在のプレビュー</span>
           </div>
         `;
         grid.appendChild(box);
@@ -319,7 +330,6 @@
       renderSetupForm();
     }
 
-    // ユーザーが端末から写真/イラストを選択したときの処理
     function updateImage(index, input) {
       const file = input.files[0];
       if (file) {
@@ -354,7 +364,7 @@
             <rect class="border-progress" id="progress-${i}" width="100%" height="100%"/>
           </svg>
           <div class="card" onclick="triggerSelect(${i})">
-            <img src="${items[i].img}">
+            <img src="${items[i].img}" alt="${items[i].text}">
             <div class="label">${items[i].text}</div>
           </div>
         `;
@@ -412,9 +422,9 @@
       }
 
       const landmarks = results.multiFaceLandmarks[0];
-      const nose = landmarks[1];          // 鼻
-      const leftIris = landmarks[468];    // 左目黒目
-      const rightIris = landmarks[473];   // 右目黒目
+      const nose = landmarks[1];
+      const leftIris = landmarks[468];
+      const rightIris = landmarks[473];
 
       // 口閉じ判定
       const upperLip = landmarks[13];
