@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>顔の向きで選ぶVOCA</title>
+  <!-- MediaPipe Face Mesh & Camera Utils -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      height: 100vh;
+      background-color: #000000;
+      overflow: hidden;
+    }
+
+    .screen { display: none; width: 100vw; height: 100vh; }
+    .screen.active { display: flex; }
+
+    /* 設定画面 */
+    #setup-screen {
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      overflow-y: auto;
+      background-color: #121212;
+      color: #ffffff;
+    }
+    .setup-card {
+      background: #1e1e1e;
+      border: 1px solid #444;
+      border-radius: 12px;
+      padding: 20px;
+      width: 100%;
+      max-width: 800px;
+      margin-bottom: 20px;
+    }
+    .item-config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 15px;
+    }
+    .item-config-box {
+      border: 2px solid #555;
+      border-radius: 8px;
+      padding: 12px;
+      background: #2a2a2a;
+    }
+    .item-config-box input[type="text"] {
+      width: 100%; padding: 8px; margin-top: 4px;
+      background: #333; color: #fff; border: 1px solid #666;
+    }
+    .start-btn {
+      background-color: #0d6efd; color: white;
+      font-size: 1.5rem; font-weight: bold;
+      padding: 15px 40px; border: none; border-radius: 30px;
+      cursor: pointer; margin-bottom: 30px;
+    }
+
+    /* 操作画面 */
+    #play-screen { flex-direction: column; position: relative; }
+    .back-btn {
+      position: absolute; top: 15px; right: 15px; z-index: 100;
+      background: rgba(255,255,255,0.2); color: white;
+      border: 1px solid #ffffff; padding: 8px 16px; border-radius: 20px;
+      cursor: pointer;
+    }
+
+    /* カメラ映像の小型プレビュー（画面左上） */
+    #cam-preview-container {
+      position: absolute; top: 15px; left: 15px; z-index: 100;
+      border: 2px solid #555; border-radius: 8px; overflow: hidden;
+      width: 120px; height: 90px; background: #222;
+    }
+    #webcam { width: 100%; height: 100%; transform: scaleX(-1); object-fit: cover; }
+
+    /* ステータス指示表示 */
+    #face-status {
+      position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+      color: #00ffcc; font-size: 1.2rem; font-weight: bold; z-index: 100;
+      background: rgba(0,0,0,0.6); padding: 6px 16px; border-radius: 20px;
+    }
+
+    .play-container {
+      flex: 1; display: grid; width: 100%; height: 100%;
+      padding: 60px; gap: 40px; align-items: center; justify-items: center;
+    }
+    .play-container.mode-2 { grid-template-columns: 1fr 1fr; }
+    .play-container.mode-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .play-container.mode-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+
+    .card {
+      width: 60%; height: 50%; background: #111111;
+      border: 6px solid #ffffff; border-radius: 24px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      transition: all 0.2s; position: relative;
+    }
+    .card.focused {
+      border-color: #00ffcc; box-shadow: 0 0 30px #00ffcc; transform: scale(1.05);
+    }
+    .card img { max-width: 65%; max-height: 50%; object-fit: contain; }
+    .card .label { font-size: 2rem; font-weight: bold; color: #ffffff; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+  <!-- 設定画面 -->
+  <div id="setup-screen" class="screen active">
+    <h1>顔の向きで選ぶVOCA 設定</h1>
+    <div class="setup-card">
+      <h2>1. 選択肢の数</h2>
+      <div>
+        <label><input type="radio" name="count" value="2" checked onchange="changeCount(2)"> 2択 (左右)</label>
+        <label><input type="radio" name="count" value="3" onchange="changeCount(3)"> 3択 (左・中央・右)</label>
+        <label><input type="radio" name="count" value="4" onchange="changeCount(4)"> 4択 (左上・右上・左下・右下)</label>
+      </div>
+    </div>
+    <div class="setup-card">
+      <h2>2. 各枠の設定</h2>
+      <div class="item-config-grid" id="config-grid"></div>
+    </div>
+    <button class="start-btn" onclick="startApp()">カメラを開始してスタート</button>
+  </div>
+
+  <!-- 操作画面 -->
+  <div id="play-screen" class="screen">
+    <div id="cam-preview-container">
+      <video id="webcam" autoplay playsinline muted></video>
+    </div>
+    <div id="face-status">顔を認識中...</div>
+    <button class="back-btn" onclick="showSetup()">⚙ 設定に戻る</button>
+    <div class="play-container" id="play-container"></div>
+  </div>
+
+  <script>
+    let currentCount = 2;
+    let items = [
+      { text: 'はい', img: 'https://via.placeholder.com/200/28a745/FFFFFF?text=YES' },
+      { text: 'いいえ', img: 'https://via.placeholder.com/200/dc3545/FFFFFF?text=NO' },
+      { text: 'お水', img: 'https://via.placeholder.com/200/17a2b8/FFFFFF?text=WATER' },
+      { text: 'トイレ', img: 'https://via.placeholder.com/200/ffc107/FFFFFF?text=TOILET' }
+    ];
+
+    let camera = null;
+    let faceMesh = null;
+    let activeTargetIndex = -1;
+    let dwellTimer = null;
+    let isSelected = false;
+
+    function renderSetupForm() {
+      const grid = document.getElementById('config-grid');
+      grid.innerHTML = '';
+      for (let i = 0; i < currentCount; i++) {
+        const box = document.createElement('div');
+        box.className = 'item-config-box';
+        box.innerHTML = `
+          <h3>枠 ${i + 1}</h3>
+          <label>テキスト:</label>
+          <input type="text" value="${items[i].text}" onchange="items[${i}].text=this.value">
+        `;
+        grid.appendChild(box);
+      }
+    }
+
+    function changeCount(count) {
+      currentCount = count;
+      renderSetupForm();
+    }
+
+    function startApp() {
+      document.getElementById('setup-screen').classList.remove('active');
+      document.getElementById('play-screen').classList.add('active');
+
+      const container = document.getElementById('play-container');
+      container.innerHTML = '';
+      container.className = `play-container mode-${currentCount}`;
+
+      for (let i = 0; i < currentCount; i++) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.id = `card-${i}`;
+        card.innerHTML = `<img src="${items[i].img}"><div class="label">${items[i].text}</div>`;
+        container.appendChild(card);
+      }
+
+      initCamera();
+    }
+
+    function showSetup() {
+      if (camera) camera.stop();
+      document.getElementById('play-screen').classList.remove('active');
+      document.getElementById('setup-screen').classList.add('active');
+    }
+
+    /* カメラと顔認識（MediaPipe FaceMesh）の初期化 */
+    function initCamera() {
+      const videoElement = document.getElementById('webcam');
+
+      faceMesh = new FaceMesh({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+      });
+
+      faceMesh.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      });
+
+      faceMesh.onResults(onFaceResults);
+
+      camera = new Camera(videoElement, {
+        onFrame: async () => {
+          await faceMesh.send({ image: videoElement });
+        },
+        width: 320,
+        height: 240
+      });
+      camera.start();
+    }
+
+    /* 顔認識の解析処理 */
+    function onFaceResults(results) {
+      const statusEl = document.getElementById('face-status');
+      if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
+        statusEl.innerText = "顔が検出されません";
+        resetFocus();
+        return;
+      }
+
+      const landmarks = results.multiFaceLandmarks[0];
+      const nose = landmarks[1]; // 鼻頭の座標
+
+      // 左右・上下の傾き判定
+      let targetIdx = -1;
+
+      if (currentCount === 2) {
+        if (nose.x > 0.58) targetIdx = 0;      // カメラ反転のため、画面右（左向き）
+        else if (nose.x < 0.42) targetIdx = 1; // 画面左（右向き）
+      } else if (currentCount === 3) {
+        if (nose.x > 0.60) targetIdx = 0;
+        else if (nose.x >= 0.40 && nose.x <= 0.60) targetIdx = 1;
+        else if (nose.x < 0.40) targetIdx = 2;
+      } else if (currentCount === 4) {
+        const isRight = nose.x > 0.50;
+        const isBottom = nose.y > 0.50;
+        if (!isRight && !isBottom) targetIdx = 0; // 左上
+        if (isRight && !isBottom) targetIdx = 1;  // 右上
+        if (!isRight && isBottom) targetIdx = 2;  // 左下
+        if (isRight && isBottom) targetIdx = 3;   // 右下
+      }
+
+      if (targetIdx !== -1) {
+        statusEl.innerText = `「${items[targetIdx].text}」に顔が向いています`;
+        handleFocus(targetIdx);
+      } else {
+        statusEl.innerText = "正面を向いています";
+        resetFocus();
+      }
+    }
+
+    /* 注視（Dwell）タイマーと選択処理 */
+    function handleFocus(index) {
+      if (isSelected) return; // 既に選択済みで正面に戻っていない場合はスキップ
+
+      if (activeTargetIndex !== index) {
+        resetFocus();
+        activeTargetIndex = index;
+        document.getElementById(`card-${index}`).classList.add('focused');
+
+        // 1秒間向き続けたら確定
+        dwellTimer = setTimeout(() => {
+          speak(items[index].text);
+          isSelected = true; // 連続判定防止
+        }, 1000);
+      }
+    }
+
+    function resetFocus() {
+      if (activeTargetIndex !== -1) {
+        const card = document.getElementById(`card-${activeTargetIndex}`);
+        if (card) card.classList.remove('focused');
+      }
+      activeTargetIndex = -1;
+      isSelected = false; // 正面に戻ったら解除
+      clearTimeout(dwellTimer);
+    }
+
+    function speak(text) {
+      const uttr = new SpeechSynthesisUtterance(text);
+      uttr.lang = "ja-JP";
+      speechSynthesis.speak(uttr);
+    }
+
+    renderSetupForm();
+  </script>
+
+</body>
+</html>
