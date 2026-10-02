@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>顔の向きで選ぶVOCA</title>
+  <title>微細な目・鼻の動きで選ぶVOCA</title>
   <!-- MediaPipe Face Mesh & Camera Utils -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
@@ -21,7 +22,9 @@
     .screen { display: none; width: 100vw; height: 100vh; }
     .screen.active { display: flex; }
 
-    /* 設定画面 */
+    /* ------------------------------
+       1. 設定画面のスタイル
+    ------------------------------ */
     #setup-screen {
       flex-direction: column;
       align-items: center;
@@ -39,6 +42,27 @@
       max-width: 800px;
       margin-bottom: 20px;
     }
+    h1, h2 { margin-top: 0; color: #ffffff; }
+    .option-count-selector { display: flex; gap: 15px; margin-bottom: 10px; }
+    .option-count-selector label { font-size: 1.2rem; font-weight: bold; cursor: pointer; }
+    
+    .setting-slider-group {
+      margin-top: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .setting-slider-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #2a2a2a;
+      padding: 10px 15px;
+      border-radius: 8px;
+    }
+    .setting-slider-item label { font-weight: bold; }
+    .setting-slider-item input[type="range"] { width: 40%; }
+
     .item-config-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -50,19 +74,32 @@
       padding: 12px;
       background: #2a2a2a;
     }
+    .item-config-box label { display: block; margin-top: 8px; font-weight: bold; font-size: 0.9rem; }
     .item-config-box input[type="text"] {
       width: 100%; padding: 8px; margin-top: 4px;
-      background: #333; color: #fff; border: 1px solid #666;
+      background: #333; color: #fff; border: 1px solid #666; border-radius: 4px;
+    }
+    .preview-thumb {
+      width: 60px; height: 60px; object-fit: contain;
+      border: 1px solid #666; background: #fff; margin-top: 8px; border-radius: 4px;
     }
     .start-btn {
       background-color: #0d6efd; color: white;
       font-size: 1.5rem; font-weight: bold;
       padding: 15px 40px; border: none; border-radius: 30px;
       cursor: pointer; margin-bottom: 30px;
+      box-shadow: 0 4px 10px rgba(13,110,253,0.5);
     }
 
-    /* 操作画面 */
-    #play-screen { flex-direction: column; position: relative; }
+    /* ------------------------------
+       2. 操作画面のスタイル
+    ------------------------------ */
+    #play-screen {
+      flex-direction: column;
+      position: relative;
+      background-color: #000000;
+    }
+
     .back-btn {
       position: absolute; top: 15px; right: 15px; z-index: 100;
       background: rgba(255,255,255,0.2); color: white;
@@ -70,7 +107,6 @@
       cursor: pointer;
     }
 
-    /* カメラ映像の小型プレビュー（画面左上） */
     #cam-preview-container {
       position: absolute; top: 15px; left: 15px; z-index: 100;
       border: 2px solid #555; border-radius: 8px; overflow: hidden;
@@ -78,11 +114,11 @@
     }
     #webcam { width: 100%; height: 100%; transform: scaleX(-1); object-fit: cover; }
 
-    /* ステータス指示表示 */
     #face-status {
       position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-      color: #00ffcc; font-size: 1.2rem; font-weight: bold; z-index: 100;
-      background: rgba(0,0,0,0.6); padding: 6px 16px; border-radius: 20px;
+      color: #00ffcc; font-size: 1.1rem; font-weight: bold; z-index: 100;
+      background: rgba(0,0,0,0.7); padding: 6px 16px; border-radius: 20px;
+      border: 1px solid #333;
     }
 
     .play-container {
@@ -94,50 +130,79 @@
     .play-container.mode-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
 
     .card {
-      width: 60%; height: 50%; background: #111111;
-      border: 6px solid #ffffff; border-radius: 24px;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      transition: all 0.2s; position: relative;
+      width: 60%; height: 50%;
+      background: #111111;
+      border: 6px solid #ffffff;
+      border-radius: 24px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      transition: all 0.15s;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.15);
     }
+
     .card.focused {
-      border-color: #00ffcc; box-shadow: 0 0 30px #00ffcc; transform: scale(1.05);
+      border-color: #00ffcc;
+      box-shadow: 0 0 35px #00ffcc;
+      transform: scale(1.05);
     }
-    .card img { max-width: 65%; max-height: 50%; object-fit: contain; }
-    .card .label { font-size: 2rem; font-weight: bold; color: #ffffff; margin-top: 10px; }
+
+    .card img { max-width: 65%; max-height: 50%; object-fit: contain; margin-bottom: 10px; }
+    .card .label { font-size: 2rem; font-weight: bold; color: #ffffff; text-align: center; }
   </style>
 </head>
 <body>
 
-  <!-- 設定画面 -->
+  <!-- ==================== 1. 初期設定画面 ==================== -->
   <div id="setup-screen" class="screen active">
-    <h1>顔の向きで選ぶVOCA 設定</h1>
+    <h1>微細な目・鼻の動きVOCA 設定</h1>
+
     <div class="setup-card">
       <h2>1. 選択肢の数</h2>
-      <div>
-        <label><input type="radio" name="count" value="2" checked onchange="changeCount(2)"> 2択 (左右)</label>
-        <label><input type="radio" name="count" value="3" onchange="changeCount(3)"> 3択 (左・中央・右)</label>
-        <label><input type="radio" name="count" value="4" onchange="changeCount(4)"> 4択 (左上・右上・左下・右下)</label>
+      <div class="option-count-selector">
+        <label><input type="radio" name="count" value="2" checked onchange="changeCount(2)"> 2択</label>
+        <label><input type="radio" name="count" value="3" onchange="changeCount(3)"> 3択</label>
+        <label><input type="radio" name="count" value="4" onchange="changeCount(4)"> 4択</label>
+      </div>
+
+      <h2>2. 動作感度と決定タイマーの設定</h2>
+      <div class="setting-slider-group">
+        <div class="setting-slider-item">
+          <label>反応感度 (小さい動きで反応):</label>
+          <input type="range" id="sensitivity" min="1" max="5" value="4" onchange="updateSensText(this.value)">
+          <span id="sens-val">高め (少しの動き)</span>
+        </div>
+        <div class="setting-slider-item">
+          <label>決定までの時間 (秒):</label>
+          <input type="range" id="dwell-time" min="0.3" max="2.0" step="0.1" value="0.8" onchange="updateDwellText(this.value)">
+          <span id="dwell-val">0.8秒</span>
+        </div>
       </div>
     </div>
+
     <div class="setup-card">
-      <h2>2. 各枠の設定</h2>
+      <h2>3. 各枠の文字とイラスト設定</h2>
       <div class="item-config-grid" id="config-grid"></div>
     </div>
+
     <button class="start-btn" onclick="startApp()">カメラを開始してスタート</button>
   </div>
 
-  <!-- 操作画面 -->
+  <!-- ==================== 2. 操作画面 ==================== -->
   <div id="play-screen" class="screen">
     <div id="cam-preview-container">
       <video id="webcam" autoplay playsinline muted></video>
     </div>
-    <div id="face-status">顔を認識中...</div>
+    <div id="face-status">目・顔の動きを検出中...</div>
     <button class="back-btn" onclick="showSetup()">⚙ 設定に戻る</button>
     <div class="play-container" id="play-container"></div>
   </div>
 
   <script>
     let currentCount = 2;
+    let sensitivity = 4; // 1〜5 (数値が高いほど小さな動きで反応)
+    let dwellTimeSec = 0.8; // 決定タイマー（秒）
+
     let items = [
       { text: 'はい', img: 'https://via.placeholder.com/200/28a745/FFFFFF?text=YES' },
       { text: 'いいえ', img: 'https://via.placeholder.com/200/dc3545/FFFFFF?text=NO' },
@@ -151,6 +216,28 @@
     let dwellTimer = null;
     let isSelected = false;
 
+    function updateSensText(val) {
+      sensitivity = parseInt(val, 10);
+      const labels = ["かなり鈍感", "やや鈍感", "標準", "高め (少しの動き)", "超高感度"];
+      document.getElementById('sens-val').innerText = labels[sensitivity - 1];
+    }
+
+    function updateDwellText(val) {
+      dwellTimeSec = parseFloat(val);
+      document.getElementById('dwell-val').innerText = `${dwellTimeSec}秒`;
+    }
+
+    function loadSavedData() {
+      const savedCount = localStorage.getItem('voca_count');
+      const savedItems = localStorage.getItem('voca_items');
+      if (savedCount) {
+        currentCount = parseInt(savedCount, 10);
+        const radio = document.querySelector(`input[name="count"][value="${currentCount}"]`);
+        if (radio) radio.checked = true;
+      }
+      if (savedItems) items = JSON.parse(savedItems);
+    }
+
     function renderSetupForm() {
       const grid = document.getElementById('config-grid');
       grid.innerHTML = '';
@@ -159,8 +246,13 @@
         box.className = 'item-config-box';
         box.innerHTML = `
           <h3>枠 ${i + 1}</h3>
-          <label>テキスト:</label>
+          <label>表示・読み上げテキスト:</label>
           <input type="text" value="${items[i].text}" onchange="items[${i}].text=this.value">
+          <label>画像の変更:</label>
+          <input type="file" accept="image/*" onchange="updateImage(${i}, this)">
+          <div>
+            <img src="${items[i].img}" id="preview-${i}" class="preview-thumb">
+          </div>
         `;
         grid.appendChild(box);
       }
@@ -171,7 +263,22 @@
       renderSetupForm();
     }
 
+    function updateImage(index, input) {
+      const file = input.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          items[index].img = e.target.result;
+          document.getElementById(`preview-${index}`).src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
     function startApp() {
+      localStorage.setItem('voca_count', currentCount);
+      localStorage.setItem('voca_items', JSON.stringify(items));
+
       document.getElementById('setup-screen').classList.remove('active');
       document.getElementById('play-screen').classList.add('active');
 
@@ -183,6 +290,7 @@
         const card = document.createElement('div');
         card.className = 'card';
         card.id = `card-${i}`;
+        card.onclick = () => speak(items[i].text);
         card.innerHTML = `<img src="${items[i].img}"><div class="label">${items[i].text}</div>`;
         container.appendChild(card);
       }
@@ -196,7 +304,6 @@
       document.getElementById('setup-screen').classList.add('active');
     }
 
-    /* カメラと顔認識（MediaPipe FaceMesh）の初期化 */
     function initCamera() {
       const videoElement = document.getElementById('webcam');
 
@@ -206,7 +313,7 @@
 
       faceMesh.setOptions({
         maxNumFaces: 1,
-        refineLandmarks: true,
+        refineLandmarks: true, // 瞳（黒目）の検出を有効化
         minDetectionConfidence: 0.5,
         minTrackingConfidence: 0.5
       });
@@ -214,69 +321,77 @@
       faceMesh.onResults(onFaceResults);
 
       camera = new Camera(videoElement, {
-        onFrame: async () => {
-          await faceMesh.send({ image: videoElement });
-        },
+        onFrame: async () => { await faceMesh.send({ image: videoElement }); },
         width: 320,
         height: 240
       });
       camera.start();
     }
 
-    /* 顔認識の解析処理 */
+    // 微細な動き（瞳 + 鼻）の解析計算
     function onFaceResults(results) {
       const statusEl = document.getElementById('face-status');
       if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
-        statusEl.innerText = "顔が検出されません";
+        statusEl.innerText = "顔・目が検出されません";
         resetFocus();
         return;
       }
 
       const landmarks = results.multiFaceLandmarks[0];
-      const nose = landmarks[1]; // 鼻頭の座標
+      const nose = landmarks[1];          // 鼻頭
+      const leftIris = landmarks[468];    // 左目黒目
+      const rightIris = landmarks[473];   // 右目黒目
 
-      // 左右・上下の傾き判定
+      // 瞳と鼻の合成位置計算
+      const avgX = (nose.x + leftIris.x + rightIris.x) / 3;
+      const avgY = (nose.y + leftIris.y + rightIris.y) / 3;
+
+      // 感度に応じた閾値設定（数値が高いほど中央デッドゾーンを狭くする）
+      const thresholdMargin = (6 - sensitivity) * 0.025; // 0.025 〜 0.125
+      const leftBoundary = 0.5 + thresholdMargin;
+      const rightBoundary = 0.5 - thresholdMargin;
+
       let targetIdx = -1;
 
       if (currentCount === 2) {
-        if (nose.x > 0.58) targetIdx = 0;      // カメラ反転のため、画面右（左向き）
-        else if (nose.x < 0.42) targetIdx = 1; // 画面左（右向き）
+        if (avgX > leftBoundary) targetIdx = 0;       // 画面左（左向き・左目線）
+        else if (avgX < rightBoundary) targetIdx = 1; // 画面右（右向き・右目線）
       } else if (currentCount === 3) {
-        if (nose.x > 0.60) targetIdx = 0;
-        else if (nose.x >= 0.40 && nose.x <= 0.60) targetIdx = 1;
-        else if (nose.x < 0.40) targetIdx = 2;
+        if (avgX > leftBoundary + 0.03) targetIdx = 0;
+        else if (avgX < rightBoundary - 0.03) targetIdx = 2;
+        else if (avgX >= rightBoundary && avgX <= leftBoundary) targetIdx = 1;
       } else if (currentCount === 4) {
-        const isRight = nose.x > 0.50;
-        const isBottom = nose.y > 0.50;
-        if (!isRight && !isBottom) targetIdx = 0; // 左上
-        if (isRight && !isBottom) targetIdx = 1;  // 右上
-        if (!isRight && isBottom) targetIdx = 2;  // 左下
-        if (isRight && isBottom) targetIdx = 3;   // 右下
+        const isRight = avgX < 0.5;
+        const isBottom = avgY > 0.5;
+        if (!isRight && !isBottom) targetIdx = 0;
+        if (isRight && !isBottom) targetIdx = 1;
+        if (!isRight && isBottom) targetIdx = 2;
+        if (isRight && isBottom) targetIdx = 3;
       }
 
       if (targetIdx !== -1) {
-        statusEl.innerText = `「${items[targetIdx].text}」に顔が向いています`;
+        statusEl.innerText = `「${items[targetIdx].text}」に注目中`;
         handleFocus(targetIdx);
       } else {
-        statusEl.innerText = "正面を向いています";
+        statusEl.innerText = "正面を注視中";
         resetFocus();
       }
     }
 
-    /* 注視（Dwell）タイマーと選択処理 */
     function handleFocus(index) {
-      if (isSelected) return; // 既に選択済みで正面に戻っていない場合はスキップ
+      if (isSelected) return;
 
       if (activeTargetIndex !== index) {
         resetFocus();
         activeTargetIndex = index;
-        document.getElementById(`card-${index}`).classList.add('focused');
+        const card = document.getElementById(`card-${index}`);
+        if (card) card.classList.add('focused');
 
-        // 1秒間向き続けたら確定
+        // 設定された dwellTimeSec 秒でタイマー作動
         dwellTimer = setTimeout(() => {
           speak(items[index].text);
-          isSelected = true; // 連続判定防止
-        }, 1000);
+          isSelected = true;
+        }, dwellTimeSec * 1000);
       }
     }
 
@@ -286,16 +401,18 @@
         if (card) card.classList.remove('focused');
       }
       activeTargetIndex = -1;
-      isSelected = false; // 正面に戻ったら解除
+      isSelected = false;
       clearTimeout(dwellTimer);
     }
 
     function speak(text) {
+      if (!text) return;
       const uttr = new SpeechSynthesisUtterance(text);
       uttr.lang = "ja-JP";
       speechSynthesis.speak(uttr);
     }
 
+    loadSavedData();
     renderSetupForm();
   </script>
 
