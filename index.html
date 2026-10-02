@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>項目モード VOCA（カメラ中央＆リアルイラスト＆強調表示版）</title>
+  <title>項目モード VOCA（黄色枠強調表示版）</title>
   <!-- MediaPipe Face Mesh & Camera Utils -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
@@ -56,7 +56,7 @@
       padding: 15px;
       background: #2a2a2a;
     }
-    .item-config-box label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.95rem; color: #00ffcc; }
+    .item-config-box label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.95rem; color: #ffeb3b; }
     .item-config-box input[type="text"], .item-config-box select {
       width: 100%; padding: 10px; margin-top: 6px;
       background: #333; color: #fff; border: 1px solid #666; border-radius: 6px; font-size: 1rem;
@@ -96,8 +96,8 @@
     }
     #announce-overlay.active { display: flex; }
     #announce-text {
-      font-size: 4.5rem; font-weight: bold; color: #00ffcc;
-      text-shadow: 0 0 25px rgba(0,255,204,0.8);
+      font-size: 4.5rem; font-weight: bold; color: #ffeb3b;
+      text-shadow: 0 0 25px rgba(255,235,59,0.8);
       animation: pulse 1s infinite alternate;
     }
     @keyframes pulse { from { transform: scale(0.95); } to { transform: scale(1.05); } }
@@ -128,14 +128,14 @@
       z-index: 100;
     }
     #cam-preview-container {
-      border: 3px solid #00ffcc; border-radius: 12px; overflow: hidden;
+      border: 3px solid #ffeb3b; border-radius: 12px; overflow: hidden;
       width: 180px; height: 120px; background: #222;
-      box-shadow: 0 0 15px rgba(0,255,204,0.4);
+      box-shadow: 0 0 15px rgba(255,235,59,0.4);
     }
     #webcam { width: 100%; height: 100%; transform: scaleX(-1); object-fit: cover; }
 
     #face-status {
-      margin-top: 8px; color: #00ffcc; font-size: 1.1rem; font-weight: bold;
+      margin-top: 8px; color: #ffeb3b; font-size: 1.1rem; font-weight: bold;
       background: rgba(0,0,0,0.8); padding: 6px 20px; border-radius: 20px;
       border: 1px solid #333;
     }
@@ -180,17 +180,17 @@
       fill: none; stroke: #333333; stroke-width: 6; rx: 24px; ry: 24px;
     }
     .border-progress {
-      fill: none; stroke: #00ffcc; stroke-width: 10; rx: 24px; ry: 24px;
+      fill: none; stroke: #ffeb3b; stroke-width: 10; rx: 24px; ry: 24px;
       stroke-dasharray: 2000; stroke-dashoffset: 2000;
       transition: stroke-dashoffset 0s linear;
     }
 
-    /* ★強烈に目立つフォーカス（読み上げ中枠）デザイン */
+    /* ★読み上げ・スキャン中の枠の黄色強調デザイン */
     .card-wrapper.focusing .card {
       transform: scale(1.08);
-      background: #1a3320;
-      border-color: #00ffcc;
-      box-shadow: 0 0 30px #00ffcc;
+      background: #332f1a;
+      border: 6px solid #ffff00;
+      box-shadow: 0 0 35px #ffeb3b, inset 0 0 15px rgba(255,235,59,0.5);
     }
     .card-wrapper.focusing .border-progress {
       stroke-dashoffset: 0;
@@ -248,23 +248,18 @@
   </div>
 
   <script>
-    // 実際のイラスト・画像データライブラリ（15種類）
+    // イラスト・画像データライブラリ
     const illustrationLibrary = [
-      // くだもの
       { id: 'f1', category: 'くだもの', name: 'りんご', img: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&w=300&q=80' },
       { id: 'f2', category: 'くだもの', name: 'みかん', img: 'https://images.unsplash.com/photo-1557800636-894a64c1696f?auto=format&fit=crop&w=300&q=80' },
       { id: 'f3', category: 'くだもの', name: 'ぶどう', img: 'https://images.unsplash.com/photo-1537640538966-79f369143f8f?auto=format&fit=crop&w=300&q=80' },
       { id: 'f4', category: 'くだもの', name: 'バナナ', img: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=300&q=80' },
       { id: 'f5', category: 'くだもの', name: 'いちご', img: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=300&q=80' },
-      
-      // 色
       { id: 'c1', category: '色', name: 'あか', img: 'https://images.unsplash.com/photo-1508873535684-277a3cbcc4e8?auto=format&fit=crop&w=300&q=80' },
       { id: 'c2', category: '色', name: 'あお', img: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=300&q=80' },
       { id: 'c3', category: '色', name: 'きいろ', img: 'https://images.unsplash.com/photo-1509114397022-ed747cca3f65?auto=format&fit=crop&w=300&q=80' },
       { id: 'c4', category: '色', name: 'みどり', img: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=300&q=80' },
       { id: 'c5', category: '色', name: 'くろ', img: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=300&q=80' },
-
-      // 動物
       { id: 'a1', category: '動物', name: 'いぬ', img: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=300&q=80' },
       { id: 'a2', category: '動物', name: 'ねこ', img: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=300&q=80' },
       { id: 'a3', category: '動物', name: 'うさぎ', img: 'https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?auto=format&fit=crop&w=300&q=80' },
@@ -275,8 +270,8 @@
     let currentCount = 2;
     let selectedItems = [illustrationLibrary[0], illustrationLibrary[5]];
 
-    const DWELL_TIME_MS = 2000; // 2秒確定
-    const SCAN_INTERVAL_MS = 5000; // 5秒で自動枠移動
+    const DWELL_TIME_MS = 2000;
+    const SCAN_INTERVAL_MS = 5000;
 
     let camera = null;
     let faceMesh = null;
@@ -384,7 +379,6 @@
       startAutoScan();
     }
 
-    // 5秒ごとの左からの自動スキャン
     function startAutoScan() {
       stopAutoScan();
       autoScanIndex = 0;
@@ -443,7 +437,6 @@
       const leftIris = landmarks[468];
       const rightIris = landmarks[473];
 
-      // 口を閉じる検出
       const upperLip = landmarks[13];
       const lowerLip = landmarks[14];
       const mouthDistance = Math.hypot(upperLip.x - lowerLip.x, upperLip.y - lowerLip.y);
@@ -465,14 +458,12 @@
         else if (avgX < 0.45) detectedIdx = 1;
       }
 
-      // 口を閉じたら現在選んでいる枠を決定
       if (isMouthClosed && activeTargetIndex !== -1) {
         statusEl.innerText = "口閉じ検出：選択確定！";
         triggerSelect(activeTargetIndex);
         return;
       }
 
-      // 顔の向き検出時
       if (detectedIdx !== -1 && detectedIdx !== activeTargetIndex) {
         statusEl.innerText = `「${selectedItems[detectedIdx].name}」を選択中`;
         handleFocus(detectedIdx);
@@ -490,7 +481,6 @@
           wrapper.classList.add('focusing');
         }
 
-        // 2秒注視で決定
         dwellTimer = setTimeout(() => {
           triggerSelect(index);
         }, DWELL_TIME_MS);
