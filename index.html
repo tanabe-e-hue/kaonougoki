@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>項目モード VOCA（自動スキャン＆イラスト選べる版）</title>
+  <title>項目モード VOCA（カメラ中央＆リアルイラスト＆強調表示版）</title>
   <!-- MediaPipe Face Mesh & Camera Utils -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
@@ -72,8 +72,8 @@
       border-radius: 6px;
     }
     .preview-thumb {
-      width: 60px; height: 60px; object-fit: contain;
-      border: 1px solid #666; background: #000; border-radius: 6px;
+      width: 70px; height: 70px; object-fit: cover;
+      border: 1px solid #666; background: #000; border-radius: 8px;
     }
 
     .start-btn {
@@ -89,26 +89,27 @@
     ------------------------------ */
     #announce-overlay {
       position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0,0,0,0.92);
+      background: rgba(0,0,0,0.95);
       display: none; flex-direction: column;
       align-items: center; justify-content: center;
       z-index: 1000;
     }
     #announce-overlay.active { display: flex; }
     #announce-text {
-      font-size: 4rem; font-weight: bold; color: #00ffcc;
-      text-shadow: 0 0 20px rgba(0,255,204,0.6);
+      font-size: 4.5rem; font-weight: bold; color: #00ffcc;
+      text-shadow: 0 0 25px rgba(0,255,204,0.8);
       animation: pulse 1s infinite alternate;
     }
     @keyframes pulse { from { transform: scale(0.95); } to { transform: scale(1.05); } }
 
     /* ------------------------------
-       3. 操作画面（項目モード）
+       3. 操作画面（カメラ正面中央配置）
     ------------------------------ */
     #play-screen {
       flex-direction: column;
       position: relative;
       background-color: #000000;
+      align-items: center;
     }
 
     .back-btn {
@@ -118,23 +119,30 @@
       cursor: pointer;
     }
 
+    /* カメラ映像を正面中央上部に配置 */
+    #cam-header-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 15px;
+      z-index: 100;
+    }
     #cam-preview-container {
-      position: absolute; top: 15px; left: 15px; z-index: 100;
-      border: 2px solid #555; border-radius: 8px; overflow: hidden;
-      width: 120px; height: 90px; background: #222;
+      border: 3px solid #00ffcc; border-radius: 12px; overflow: hidden;
+      width: 180px; height: 120px; background: #222;
+      box-shadow: 0 0 15px rgba(0,255,204,0.4);
     }
     #webcam { width: 100%; height: 100%; transform: scaleX(-1); object-fit: cover; }
 
     #face-status {
-      position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-      color: #00ffcc; font-size: 1.1rem; font-weight: bold; z-index: 100;
-      background: rgba(0,0,0,0.7); padding: 6px 16px; border-radius: 20px;
+      margin-top: 8px; color: #00ffcc; font-size: 1.1rem; font-weight: bold;
+      background: rgba(0,0,0,0.8); padding: 6px 20px; border-radius: 20px;
       border: 1px solid #333;
     }
 
     .play-container {
-      flex: 1; display: grid; width: 100%; height: 100%;
-      padding: 60px; gap: 30px; align-items: center; justify-items: center;
+      flex: 1; display: grid; width: 100%; height: calc(100vh - 180px);
+      padding: 30px 60px 50px 60px; gap: 30px; align-items: center; justify-items: center;
     }
     .play-container.mode-2 { grid-template-columns: 1fr 1fr; }
     .play-container.mode-3 { grid-template-columns: 1fr 1fr 1fr; }
@@ -142,8 +150,8 @@
 
     .card-wrapper {
       position: relative;
-      width: 70%;
-      height: 60%;
+      width: 80%;
+      height: 75%;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -152,10 +160,11 @@
     .card {
       width: 100%; height: 100%;
       background: #111111;
+      border: 3px solid #444;
       border-radius: 24px;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      transition: transform 0.2s;
+      transition: all 0.2s ease-in-out;
       cursor: pointer;
       position: relative;
       z-index: 1;
@@ -168,22 +177,31 @@
       pointer-events: none; z-index: 2;
     }
     .border-bg {
-      fill: none; stroke: #ffffff; stroke-width: 6; rx: 24px; ry: 24px;
+      fill: none; stroke: #333333; stroke-width: 6; rx: 24px; ry: 24px;
     }
     .border-progress {
-      fill: none; stroke: #00ffcc; stroke-width: 8; rx: 24px; ry: 24px;
+      fill: none; stroke: #00ffcc; stroke-width: 10; rx: 24px; ry: 24px;
       stroke-dasharray: 2000; stroke-dashoffset: 2000;
       transition: stroke-dashoffset 0s linear;
     }
 
-    /* 2秒間の緑枠線周回アニメーション */
+    /* ★強烈に目立つフォーカス（読み上げ中枠）デザイン */
+    .card-wrapper.focusing .card {
+      transform: scale(1.08);
+      background: #1a3320;
+      border-color: #00ffcc;
+      box-shadow: 0 0 30px #00ffcc;
+    }
     .card-wrapper.focusing .border-progress {
       stroke-dashoffset: 0;
       transition: stroke-dashoffset 2s linear;
     }
-    .card-wrapper.focusing .card { transform: scale(1.05); }
 
-    .card img { max-width: 65%; max-height: 55%; object-fit: contain; margin-bottom: 15px; }
+    .card img {
+      max-width: 70%; max-height: 60%; object-fit: cover;
+      border-radius: 16px; margin-bottom: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
     .card .label { font-size: 2.2rem; font-weight: bold; color: #ffffff; text-align: center; }
   </style>
 </head>
@@ -203,7 +221,7 @@
     </div>
 
     <div class="setup-card">
-      <h2>2. 各枠のイラスト・文字割り当て（各5種・全15種から選択）</h2>
+      <h2>2. 各枠のイラスト・文字選択</h2>
       <div class="item-config-grid" id="config-grid"></div>
     </div>
 
@@ -217,44 +235,48 @@
 
   <!-- ==================== 2. 操作画面 ==================== -->
   <div id="play-screen" class="screen">
-    <div id="cam-preview-container">
-      <video id="webcam" autoplay playsinline muted></video>
+    <!-- カメラ画面（正面中央配置） -->
+    <div id="cam-header-container">
+      <div id="cam-preview-container">
+        <video id="webcam" autoplay playsinline muted></video>
+      </div>
+      <div id="face-status">顔・口の動きを検出中...</div>
     </div>
-    <div id="face-status">顔・口の動きを検出中...</div>
+
     <button class="back-btn" onclick="showSetup()">⚙ 設定に戻る</button>
     <div class="play-container" id="play-container"></div>
   </div>
 
   <script>
-    // 5個ずつのイラストデータライブラリ（計15個）
+    // 実際のイラスト・画像データライブラリ（15種類）
     const illustrationLibrary = [
-      // くだもの（5個）
-      { id: 'f1', category: 'くだもの', name: 'りんご', img: 'https://via.placeholder.com/250/ff4d4d/FFFFFF?text=🍎+りんご' },
-      { id: 'f2', category: 'くだもの', name: 'みかん', img: 'https://via.placeholder.com/250/ffa500/FFFFFF?text=🍊+みかん' },
-      { id: 'f3', category: 'くだもの', name: 'ぶどう', img: 'https://via.placeholder.com/250/8a2be2/FFFFFF?text=🍇+ぶどう' },
-      { id: 'f4', category: 'くだもの', name: 'バナナ', img: 'https://via.placeholder.com/250/ffd700/000000?text=🍌+バナナ' },
-      { id: 'f5', category: 'くだもの', name: 'いちご', img: 'https://via.placeholder.com/250/ff1493/FFFFFF?text=🍓+いちご' },
+      // くだもの
+      { id: 'f1', category: 'くだもの', name: 'りんご', img: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&w=300&q=80' },
+      { id: 'f2', category: 'くだもの', name: 'みかん', img: 'https://images.unsplash.com/photo-1557800636-894a64c1696f?auto=format&fit=crop&w=300&q=80' },
+      { id: 'f3', category: 'くだもの', name: 'ぶどう', img: 'https://images.unsplash.com/photo-1537640538966-79f369143f8f?auto=format&fit=crop&w=300&q=80' },
+      { id: 'f4', category: 'くだもの', name: 'バナナ', img: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=300&q=80' },
+      { id: 'f5', category: 'くだもの', name: 'いちご', img: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=300&q=80' },
       
-      // 色（5個）
-      { id: 'c1', category: '色', name: 'あか', img: 'https://via.placeholder.com/250/ff0000/FFFFFF?text=🔴+あか' },
-      { id: 'c2', category: '色', name: 'あお', img: 'https://via.placeholder.com/250/0000ff/FFFFFF?text=🔵+あお' },
-      { id: 'c3', category: '色', name: 'きいろ', img: 'https://via.placeholder.com/250/ffff00/000000?text=🟡+きいろ' },
-      { id: 'c4', category: '色', name: 'みどり', img: 'https://via.placeholder.com/250/008000/FFFFFF?text=🟢+みどり' },
-      { id: 'c5', category: '色', name: 'くろ', img: 'https://via.placeholder.com/250/333333/FFFFFF?text=⚫+くろ' },
+      // 色
+      { id: 'c1', category: '色', name: 'あか', img: 'https://images.unsplash.com/photo-1508873535684-277a3cbcc4e8?auto=format&fit=crop&w=300&q=80' },
+      { id: 'c2', category: '色', name: 'あお', img: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=300&q=80' },
+      { id: 'c3', category: '色', name: 'きいろ', img: 'https://images.unsplash.com/photo-1509114397022-ed747cca3f65?auto=format&fit=crop&w=300&q=80' },
+      { id: 'c4', category: '色', name: 'みどり', img: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=300&q=80' },
+      { id: 'c5', category: '色', name: 'くろ', img: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=300&q=80' },
 
-      // 動物（5個）
-      { id: 'a1', category: '動物', name: 'いぬ', img: 'https://via.placeholder.com/250/d2691e/FFFFFF?text=🐶+いぬ' },
-      { id: 'a2', category: '動物', name: 'ねこ', img: 'https://via.placeholder.com/250/708090/FFFFFF?text=🐱+ねこ' },
-      { id: 'a3', category: '動物', name: 'うさぎ', img: 'https://via.placeholder.com/250/ffb6c1/000000?text=🐰+うさぎ' },
-      { id: 'a4', category: '動物', name: 'くま', img: 'https://via.placeholder.com/250/8b4513/FFFFFF?text=🐻+くま' },
-      { id: 'a5', category: '動物', name: 'ぞう', img: 'https://via.placeholder.com/250/4682b4/FFFFFF?text=🐘+ぞう' }
+      // 動物
+      { id: 'a1', category: '動物', name: 'いぬ', img: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=300&q=80' },
+      { id: 'a2', category: '動物', name: 'ねこ', img: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=300&q=80' },
+      { id: 'a3', category: '動物', name: 'うさぎ', img: 'https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?auto=format&fit=crop&w=300&q=80' },
+      { id: 'a4', category: '動物', name: 'くま', img: 'https://images.unsplash.com/photo-1530595467537-0b5996c41f2d?auto=format&fit=crop&w=300&q=80' },
+      { id: 'a5', category: '動物', name: 'ペンギン', img: 'https://images.unsplash.com/photo-1598439210625-5067c578f3f6?auto=format&fit=crop&w=300&q=80' }
     ];
 
     let currentCount = 2;
-    let selectedItems = [illustrationLibrary[0], illustrationLibrary[5]]; // 初期化（りんご, あか）
+    let selectedItems = [illustrationLibrary[0], illustrationLibrary[5]];
 
-    const DWELL_TIME_MS = 2000; // 2秒注視
-    const SCAN_INTERVAL_MS = 5000; // 5秒で自動移動
+    const DWELL_TIME_MS = 2000; // 2秒確定
+    const SCAN_INTERVAL_MS = 5000; // 5秒で自動枠移動
 
     let camera = null;
     let faceMesh = null;
@@ -282,12 +304,12 @@
 
         box.innerHTML = `
           <h3>枠 ${i + 1}</h3>
-          <label>イラスト・項目を選択:</label>
+          <label>イラストを選択:</label>
           <select onchange="onSelectItem(${i}, this.value)">
             ${selectOptionsHtml}
           </select>
 
-          <label>表示テキスト (変更可):</label>
+          <label>表示・読み上げ名:</label>
           <input type="text" id="label-input-${i}" value="${selectedItems[i].name}" onchange="selectedItems[${i}].name=this.value">
 
           <div class="preview-container">
@@ -311,7 +333,6 @@
       renderSetupForm();
     }
 
-    // スタート時に「はじめます」のアナウンス＋表示
     function startAppWithAnnounce() {
       document.getElementById('setup-screen').classList.remove('active');
       const overlay = document.getElementById('announce-overlay');
@@ -343,7 +364,7 @@
             <rect class="border-progress" id="progress-${i}" width="100%" height="100%"/>
           </svg>
           <div class="card" onclick="triggerSelect(${i})">
-            <img src="${selectedItems[i].img}">
+            <img src="${selectedItems[i].img}" alt="${selectedItems[i].name}">
             <div class="label">${selectedItems[i].name}</div>
           </div>
         `;
@@ -363,7 +384,7 @@
       startAutoScan();
     }
 
-    // 左から順番に5秒ずつフォーカスを移動（自動スキャン）
+    // 5秒ごとの左からの自動スキャン
     function startAutoScan() {
       stopAutoScan();
       autoScanIndex = 0;
@@ -422,7 +443,7 @@
       const leftIris = landmarks[468];
       const rightIris = landmarks[473];
 
-      // 口を閉じる判定
+      // 口を閉じる検出
       const upperLip = landmarks[13];
       const lowerLip = landmarks[14];
       const mouthDistance = Math.hypot(upperLip.x - lowerLip.x, upperLip.y - lowerLip.y);
@@ -432,7 +453,6 @@
 
       let detectedIdx = -1;
 
-      // 顔の向きによる目標検知
       if (currentCount === 2) {
         if (avgX > 0.55) detectedIdx = 0;
         else if (avgX < 0.45) detectedIdx = 1;
@@ -445,16 +465,16 @@
         else if (avgX < 0.45) detectedIdx = 1;
       }
 
-      // 口を閉じた場合は現在フォーカスされている項目を選択確定
+      // 口を閉じたら現在選んでいる枠を決定
       if (isMouthClosed && activeTargetIndex !== -1) {
-        statusEl.innerText = "口閉じ検出：選択確定";
+        statusEl.innerText = "口閉じ検出：選択確定！";
         triggerSelect(activeTargetIndex);
         return;
       }
 
-      // 顔の向きで検知された場合はフォーカス切り替え
+      // 顔の向き検出時
       if (detectedIdx !== -1 && detectedIdx !== activeTargetIndex) {
-        statusEl.innerText = `「${selectedItems[detectedIdx].name}」に顔が向いています`;
+        statusEl.innerText = `「${selectedItems[detectedIdx].name}」を選択中`;
         handleFocus(detectedIdx);
       }
     }
@@ -470,7 +490,7 @@
           wrapper.classList.add('focusing');
         }
 
-        // 2秒間見ることで選択確定
+        // 2秒注視で決定
         dwellTimer = setTimeout(() => {
           triggerSelect(index);
         }, DWELL_TIME_MS);
@@ -482,7 +502,6 @@
       isSelected = true;
       resetFocusEffect();
 
-      // 2秒後に選択復帰
       setTimeout(() => {
         isSelected = false;
       }, 2000);
