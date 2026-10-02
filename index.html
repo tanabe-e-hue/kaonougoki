@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>項目選択モード VOCA（イラスト＋文字対応）</title>
+  <title>項目モード VOCA（自動スキャン＆イラスト選べる版）</title>
   <!-- MediaPipe Face Mesh & Camera Utils -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
@@ -38,23 +38,16 @@
       border-radius: 12px;
       padding: 20px;
       width: 100%;
-      max-width: 800px;
+      max-width: 850px;
       margin-bottom: 20px;
     }
     h1, h2 { margin-top: 0; color: #ffffff; }
     .option-count-selector { display: flex; gap: 15px; margin-bottom: 10px; }
     .option-count-selector label { font-size: 1.2rem; font-weight: bold; cursor: pointer; }
-    
-    .preset-btns { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-    .preset-btn {
-      background: #333; color: #fff; border: 1px solid #666;
-      padding: 10px 18px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 1rem;
-    }
-    .preset-btn:hover { background: #0d6efd; border-color: #0d6efd; }
 
     .item-config-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: 15px;
     }
     .item-config-box {
@@ -64,21 +57,11 @@
       background: #2a2a2a;
     }
     .item-config-box label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.95rem; color: #00ffcc; }
-    .item-config-box input[type="text"] {
+    .item-config-box input[type="text"], .item-config-box select {
       width: 100%; padding: 10px; margin-top: 6px;
       background: #333; color: #fff; border: 1px solid #666; border-radius: 6px; font-size: 1rem;
     }
-    .file-input-wrapper {
-      margin-top: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .file-input-btn {
-      background: #444; color: #fff; border: 1px solid #777;
-      padding: 8px 12px; border-radius: 6px; cursor: pointer; text-align: center;
-      font-size: 0.9rem; font-weight: bold;
-    }
+
     .preview-container {
       display: flex;
       align-items: center;
@@ -89,9 +72,10 @@
       border-radius: 6px;
     }
     .preview-thumb {
-      width: 70px; height: 70px; object-fit: contain;
+      width: 60px; height: 60px; object-fit: contain;
       border: 1px solid #666; background: #000; border-radius: 6px;
     }
+
     .start-btn {
       background-color: #0d6efd; color: white;
       font-size: 1.5rem; font-weight: bold;
@@ -101,7 +85,25 @@
     }
 
     /* ------------------------------
-       2. 操作画面（項目モード）
+       2. アナウンス画面 (スタート時)
+    ------------------------------ */
+    #announce-overlay {
+      position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.92);
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 1000;
+    }
+    #announce-overlay.active { display: flex; }
+    #announce-text {
+      font-size: 4rem; font-weight: bold; color: #00ffcc;
+      text-shadow: 0 0 20px rgba(0,255,204,0.6);
+      animation: pulse 1s infinite alternate;
+    }
+    @keyframes pulse { from { transform: scale(0.95); } to { transform: scale(1.05); } }
+
+    /* ------------------------------
+       3. 操作画面（項目モード）
     ------------------------------ */
     #play-screen {
       flex-direction: column;
@@ -132,17 +134,16 @@
 
     .play-container {
       flex: 1; display: grid; width: 100%; height: 100%;
-      padding: 60px; gap: 40px; align-items: center; justify-items: center;
+      padding: 60px; gap: 30px; align-items: center; justify-items: center;
     }
     .play-container.mode-2 { grid-template-columns: 1fr 1fr; }
     .play-container.mode-3 { grid-template-columns: 1fr 1fr 1fr; }
     .play-container.mode-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
 
-    /* カード・SVGアニメーション構造 */
     .card-wrapper {
       position: relative;
-      width: 65%;
-      height: 55%;
+      width: 70%;
+      height: 60%;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -162,49 +163,28 @@
     }
 
     .border-svg {
-      position: absolute;
-      top: 0; left: 0;
+      position: absolute; top: 0; left: 0;
       width: 100%; height: 100%;
-      pointer-events: none;
-      z-index: 2;
+      pointer-events: none; z-index: 2;
     }
     .border-bg {
-      fill: none;
-      stroke: #ffffff;
-      stroke-width: 6;
-      rx: 24px; ry: 24px;
+      fill: none; stroke: #ffffff; stroke-width: 6; rx: 24px; ry: 24px;
     }
     .border-progress {
-      fill: none;
-      stroke: #00ffcc;
-      stroke-width: 8;
-      rx: 24px; ry: 24px;
-      stroke-dasharray: 2000;
-      stroke-dashoffset: 2000;
+      fill: none; stroke: #00ffcc; stroke-width: 8; rx: 24px; ry: 24px;
+      stroke-dasharray: 2000; stroke-dashoffset: 2000;
       transition: stroke-dashoffset 0s linear;
     }
 
-    /* 2秒間の囲みアニメーション */
+    /* 2秒間の緑枠線周回アニメーション */
     .card-wrapper.focusing .border-progress {
       stroke-dashoffset: 0;
       transition: stroke-dashoffset 2s linear;
     }
-    .card-wrapper.focusing .card {
-      transform: scale(1.04);
-    }
+    .card-wrapper.focusing .card { transform: scale(1.05); }
 
-    .card img {
-      max-width: 60%;
-      max-height: 55%;
-      object-fit: contain;
-      margin-bottom: 15px;
-    }
-    .card .label {
-      font-size: 2.2rem;
-      font-weight: bold;
-      color: #ffffff;
-      text-align: center;
-    }
+    .card img { max-width: 65%; max-height: 55%; object-fit: contain; margin-bottom: 15px; }
+    .card .label { font-size: 2.2rem; font-weight: bold; color: #ffffff; text-align: center; }
   </style>
 </head>
 <body>
@@ -214,27 +194,25 @@
     <h1>項目選択モード VOCA 設定</h1>
 
     <div class="setup-card">
-      <h2>1. 画面に表示する項目の数</h2>
+      <h2>1. 枠の数（選択肢数）</h2>
       <div class="option-count-selector">
         <label><input type="radio" name="count" value="2" checked onchange="changeCount(2)"> 2項目</label>
         <label><input type="radio" name="count" value="3" onchange="changeCount(3)"> 3項目</label>
         <label><input type="radio" name="count" value="4" onchange="changeCount(4)"> 4項目</label>
       </div>
-
-      <h2>2. 項目カテゴリのサンプルセット</h2>
-      <div class="preset-btns">
-        <button class="preset-btn" onclick="applyPreset('requests')">🙋‍♂️ 要望（お水・トイレ等）</button>
-        <button class="preset-btn" onclick="applyPreset('feelings')">😊 気持ち（うれしい等）</button>
-        <button class="preset-btn" onclick="applyPreset('body')">🩺 身体・体調（痛い等）</button>
-      </div>
     </div>
 
     <div class="setup-card">
-      <h2>3. 各項目の文字とイラスト設定</h2>
+      <h2>2. 各枠のイラスト・文字割り当て（各5種・全15種から選択）</h2>
       <div class="item-config-grid" id="config-grid"></div>
     </div>
 
-    <button class="start-btn" onclick="startApp()">カメラを開始してスタート</button>
+    <button class="start-btn" onclick="startAppWithAnnounce()">スタート</button>
+  </div>
+
+  <!-- アナウンス用オーバーレイ -->
+  <div id="announce-overlay">
+    <div id="announce-text">はじめます</div>
   </div>
 
   <!-- ==================== 2. 操作画面 ==================== -->
@@ -242,87 +220,90 @@
     <div id="cam-preview-container">
       <video id="webcam" autoplay playsinline muted></video>
     </div>
-    <div id="face-status">顔・目・口の動作を検出中...</div>
+    <div id="face-status">顔・口の動きを検出中...</div>
     <button class="back-btn" onclick="showSetup()">⚙ 設定に戻る</button>
     <div class="play-container" id="play-container"></div>
   </div>
 
   <script>
+    // 5個ずつのイラストデータライブラリ（計15個）
+    const illustrationLibrary = [
+      // くだもの（5個）
+      { id: 'f1', category: 'くだもの', name: 'りんご', img: 'https://via.placeholder.com/250/ff4d4d/FFFFFF?text=🍎+りんご' },
+      { id: 'f2', category: 'くだもの', name: 'みかん', img: 'https://via.placeholder.com/250/ffa500/FFFFFF?text=🍊+みかん' },
+      { id: 'f3', category: 'くだもの', name: 'ぶどう', img: 'https://via.placeholder.com/250/8a2be2/FFFFFF?text=🍇+ぶどう' },
+      { id: 'f4', category: 'くだもの', name: 'バナナ', img: 'https://via.placeholder.com/250/ffd700/000000?text=🍌+バナナ' },
+      { id: 'f5', category: 'くだもの', name: 'いちご', img: 'https://via.placeholder.com/250/ff1493/FFFFFF?text=🍓+いちご' },
+      
+      // 色（5個）
+      { id: 'c1', category: '色', name: 'あか', img: 'https://via.placeholder.com/250/ff0000/FFFFFF?text=🔴+あか' },
+      { id: 'c2', category: '色', name: 'あお', img: 'https://via.placeholder.com/250/0000ff/FFFFFF?text=🔵+あお' },
+      { id: 'c3', category: '色', name: 'きいろ', img: 'https://via.placeholder.com/250/ffff00/000000?text=🟡+きいろ' },
+      { id: 'c4', category: '色', name: 'みどり', img: 'https://via.placeholder.com/250/008000/FFFFFF?text=🟢+みどり' },
+      { id: 'c5', category: '色', name: 'くろ', img: 'https://via.placeholder.com/250/333333/FFFFFF?text=⚫+くろ' },
+
+      // 動物（5個）
+      { id: 'a1', category: '動物', name: 'いぬ', img: 'https://via.placeholder.com/250/d2691e/FFFFFF?text=🐶+いぬ' },
+      { id: 'a2', category: '動物', name: 'ねこ', img: 'https://via.placeholder.com/250/708090/FFFFFF?text=🐱+ねこ' },
+      { id: 'a3', category: '動物', name: 'うさぎ', img: 'https://via.placeholder.com/250/ffb6c1/000000?text=🐰+うさぎ' },
+      { id: 'a4', category: '動物', name: 'くま', img: 'https://via.placeholder.com/250/8b4513/FFFFFF?text=🐻+くま' },
+      { id: 'a5', category: '動物', name: 'ぞう', img: 'https://via.placeholder.com/250/4682b4/FFFFFF?text=🐘+ぞう' }
+    ];
+
     let currentCount = 2;
-    const DWELL_TIME_MS = 2000; // 2秒確定
+    let selectedItems = [illustrationLibrary[0], illustrationLibrary[5]]; // 初期化（りんご, あか）
 
-    // 項目モード用サンプル定義（イラスト＋文字）
-    const presets = {
-      requests: [
-        { text: 'お水', img: 'https://via.placeholder.com/250/17a2b8/FFFFFF?text=💧+お水' },
-        { text: 'トイレ', img: 'https://via.placeholder.com/250/ffc107/000000?text=🚻+トイレ' },
-        { text: 'テレビ', img: 'https://via.placeholder.com/250/6c757d/FFFFFF?text=📺+テレビ' },
-        { text: 'おやすみ', img: 'https://via.placeholder.com/250/6f42c1/FFFFFF?text=🌙+おやすみ' }
-      ],
-      feelings: [
-        { text: 'うれしい', img: 'https://via.placeholder.com/250/28a745/FFFFFF?text=😊+うれしい' },
-        { text: 'かなしい', img: 'https://via.placeholder.com/250/007bff/FFFFFF?text=😢+かなしい' },
-        { text: 'たのしい', img: 'https://via.placeholder.com/250/fd7e14/FFFFFF?text=😄+たのしい' },
-        { text: 'つかれた', img: 'https://via.placeholder.com/250/6c757d/FFFFFF?text=😫+つかれた' }
-      ],
-      body: [
-        { text: 'いたい', img: 'https://via.placeholder.com/250/dc3545/FFFFFF?text=⚡+いたい' },
-        { text: 'かゆい', img: 'https://via.placeholder.com/250/e83e8c/FFFFFF?text=✋+かゆい' },
-        { text: 'あつい', img: 'https://via.placeholder.com/250/ff4500/FFFFFF?text=☀️+あつい' },
-        { text: 'さむい', img: 'https://via.placeholder.com/250/20c997/FFFFFF?text=❄️+さむい' }
-      ]
-    };
-
-    let items = [...presets.requests];
+    const DWELL_TIME_MS = 2000; // 2秒注視
+    const SCAN_INTERVAL_MS = 5000; // 5秒で自動移動
 
     let camera = null;
     let faceMesh = null;
     let activeTargetIndex = -1;
     let dwellTimer = null;
+    let scanIntervalTimer = null;
     let isSelected = false;
-
-    function applyPreset(type) {
-      items = JSON.parse(JSON.stringify(presets[type]));
-      renderSetupForm();
-    }
-
-    function loadSavedData() {
-      const savedCount = localStorage.getItem('voca_count');
-      const savedItems = localStorage.getItem('voca_items');
-      if (savedCount) {
-        currentCount = parseInt(savedCount, 10);
-        const radio = document.querySelector(`input[name="count"][value="${currentCount}"]`);
-        if (radio) radio.checked = true;
-      }
-      if (savedItems) items = JSON.parse(savedItems);
-    }
+    let autoScanIndex = 0;
 
     function renderSetupForm() {
       const grid = document.getElementById('config-grid');
       grid.innerHTML = '';
+
       for (let i = 0; i < currentCount; i++) {
+        if (!selectedItems[i]) selectedItems[i] = illustrationLibrary[i % illustrationLibrary.length];
+        
         const box = document.createElement('div');
         box.className = 'item-config-box';
+        
+        let selectOptionsHtml = '';
+        illustrationLibrary.forEach((item, index) => {
+          const isSel = (item.id === selectedItems[i].id) ? 'selected' : '';
+          selectOptionsHtml += `<option value="${index}" ${isSel}>[${item.category}] ${item.name}</option>`;
+        });
+
         box.innerHTML = `
-          <h3>項目 ${i + 1}</h3>
-          <label>表示・読み上げテキスト:</label>
-          <input type="text" value="${items[i].text}" onchange="items[${i}].text=this.value">
-          
-          <label>イラスト・写真の設定:</label>
-          <div class="file-input-wrapper">
-            <input type="file" id="file-input-${i}" accept="image/*" style="display:none;" onchange="updateImage(${i}, this)">
-            <button type="button" class="file-input-btn" onclick="document.getElementById('file-input-${i}').click()">
-              📷 イラスト・画像を選択
-            </button>
-          </div>
+          <h3>枠 ${i + 1}</h3>
+          <label>イラスト・項目を選択:</label>
+          <select onchange="onSelectItem(${i}, this.value)">
+            ${selectOptionsHtml}
+          </select>
+
+          <label>表示テキスト (変更可):</label>
+          <input type="text" id="label-input-${i}" value="${selectedItems[i].name}" onchange="selectedItems[${i}].name=this.value">
 
           <div class="preview-container">
-            <img src="${items[i].img}" id="preview-${i}" class="preview-thumb">
-            <span style="font-size:0.85rem; color:#aaa;">現在のプレビュー</span>
+            <img src="${selectedItems[i].img}" id="preview-${i}" class="preview-thumb">
+            <span style="font-size:0.85rem; color:#aaa;">プレビュー</span>
           </div>
         `;
         grid.appendChild(box);
       }
+    }
+
+    function onSelectItem(slotIndex, libIndex) {
+      const chosen = illustrationLibrary[libIndex];
+      selectedItems[slotIndex] = { ...chosen };
+      document.getElementById(`preview-${slotIndex}`).src = chosen.img;
+      document.getElementById(`label-input-${slotIndex}`).value = chosen.name;
     }
 
     function changeCount(count) {
@@ -330,23 +311,21 @@
       renderSetupForm();
     }
 
-    function updateImage(index, input) {
-      const file = input.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          items[index].img = e.target.result;
-          document.getElementById(`preview-${index}`).src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      }
+    // スタート時に「はじめます」のアナウンス＋表示
+    function startAppWithAnnounce() {
+      document.getElementById('setup-screen').classList.remove('active');
+      const overlay = document.getElementById('announce-overlay');
+      overlay.classList.add('active');
+
+      speak("はじめます");
+
+      setTimeout(() => {
+        overlay.classList.remove('active');
+        startPlayScreen();
+      }, 2000);
     }
 
-    function startApp() {
-      localStorage.setItem('voca_count', currentCount);
-      localStorage.setItem('voca_items', JSON.stringify(items));
-
-      document.getElementById('setup-screen').classList.remove('active');
+    function startPlayScreen() {
       document.getElementById('play-screen').classList.add('active');
 
       const container = document.getElementById('play-container');
@@ -364,8 +343,8 @@
             <rect class="border-progress" id="progress-${i}" width="100%" height="100%"/>
           </svg>
           <div class="card" onclick="triggerSelect(${i})">
-            <img src="${items[i].img}" alt="${items[i].text}">
-            <div class="label">${items[i].text}</div>
+            <img src="${selectedItems[i].img}">
+            <div class="label">${selectedItems[i].name}</div>
           </div>
         `;
         container.appendChild(wrapper);
@@ -381,10 +360,28 @@
       }
 
       initCamera();
+      startAutoScan();
+    }
+
+    // 左から順番に5秒ずつフォーカスを移動（自動スキャン）
+    function startAutoScan() {
+      stopAutoScan();
+      autoScanIndex = 0;
+      handleFocus(autoScanIndex);
+
+      scanIntervalTimer = setInterval(() => {
+        autoScanIndex = (autoScanIndex + 1) % currentCount;
+        handleFocus(autoScanIndex);
+      }, SCAN_INTERVAL_MS);
+    }
+
+    function stopAutoScan() {
+      if (scanIntervalTimer) clearInterval(scanIntervalTimer);
     }
 
     function showSetup() {
       if (camera) camera.stop();
+      stopAutoScan();
       document.getElementById('play-screen').classList.remove('active');
       document.getElementById('setup-screen').classList.add('active');
     }
@@ -416,8 +413,7 @@
     function onFaceResults(results) {
       const statusEl = document.getElementById('face-status');
       if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
-        statusEl.innerText = "検出されていません";
-        resetFocus();
+        statusEl.innerText = "自動スキャン進行中...";
         return;
       }
 
@@ -426,47 +422,40 @@
       const leftIris = landmarks[468];
       const rightIris = landmarks[473];
 
-      // 口閉じ判定
+      // 口を閉じる判定
       const upperLip = landmarks[13];
       const lowerLip = landmarks[14];
       const mouthDistance = Math.hypot(upperLip.x - lowerLip.x, upperLip.y - lowerLip.y);
       const isMouthClosed = mouthDistance < 0.018;
 
       const avgX = (nose.x + leftIris.x + rightIris.x) / 3;
-      const avgY = (nose.y + leftIris.y + rightIris.y) / 3;
 
-      let targetIdx = -1;
+      let detectedIdx = -1;
 
-      if (isMouthClosed) {
-        if (avgX > 0.52) targetIdx = 0;
-        else if (avgX < 0.48) targetIdx = (currentCount > 1) ? 1 : 0;
+      // 顔の向きによる目標検知
+      if (currentCount === 2) {
+        if (avgX > 0.55) detectedIdx = 0;
+        else if (avgX < 0.45) detectedIdx = 1;
+      } else if (currentCount === 3) {
+        if (avgX > 0.58) detectedIdx = 0;
+        else if (avgX < 0.42) detectedIdx = 2;
+        else if (avgX >= 0.42 && avgX <= 0.58) detectedIdx = 1;
+      } else if (currentCount === 4) {
+        if (avgX > 0.55) detectedIdx = 0;
+        else if (avgX < 0.45) detectedIdx = 1;
       }
 
-      if (targetIdx === -1) {
-        if (currentCount === 2) {
-          if (avgX > 0.55) targetIdx = 0;
-          else if (avgX < 0.45) targetIdx = 1;
-        } else if (currentCount === 3) {
-          if (avgX > 0.58) targetIdx = 0;
-          else if (avgX < 0.42) targetIdx = 2;
-          else if (avgX >= 0.42 && avgX <= 0.58) targetIdx = 1;
-        } else if (currentCount === 4) {
-          const isRight = avgX < 0.5;
-          const isBottom = avgY > 0.5;
-          if (!isRight && !isBottom) targetIdx = 0;
-          if (isRight && !isBottom) targetIdx = 1;
-          if (!isRight && isBottom) targetIdx = 2;
-          if (isRight && isBottom) targetIdx = 3;
-        }
+      // 口を閉じた場合は現在フォーカスされている項目を選択確定
+      if (isMouthClosed && activeTargetIndex !== -1) {
+        statusEl.innerText = "口閉じ検出：選択確定";
+        triggerSelect(activeTargetIndex);
+        return;
       }
 
-      if (targetIdx !== -1) {
-        const actionText = isMouthClosed ? "（口閉じ検出）" : "";
-        statusEl.innerText = `「${items[targetIdx].text}」を選択中 ${actionText}`;
-        handleFocus(targetIdx);
-      } else {
-        statusEl.innerText = "正面を向いています";
-        resetFocus();
+      // 顔の向きで検知された場合はフォーカス切り替え
+      if (detectedIdx !== -1 && detectedIdx !== activeTargetIndex) {
+        statusEl.innerText = `「${selectedItems[detectedIdx].name}」に顔が向いています`;
+        handleFocus(detectedIdx);
       }
     }
 
@@ -474,13 +463,14 @@
       if (isSelected) return;
 
       if (activeTargetIndex !== index) {
-        resetFocus();
+        resetFocusEffect();
         activeTargetIndex = index;
         const wrapper = document.getElementById(`wrapper-${index}`);
         if (wrapper) {
           wrapper.classList.add('focusing');
         }
 
+        // 2秒間見ることで選択確定
         dwellTimer = setTimeout(() => {
           triggerSelect(index);
         }, DWELL_TIME_MS);
@@ -488,21 +478,25 @@
     }
 
     function triggerSelect(index) {
-      speak(items[index].text);
+      speak(selectedItems[index].name);
       isSelected = true;
-      resetFocus();
+      resetFocusEffect();
+
+      // 2秒後に選択復帰
+      setTimeout(() => {
+        isSelected = false;
+      }, 2000);
     }
 
-    function resetFocus() {
+    function resetFocusEffect() {
       if (activeTargetIndex !== -1) {
         const wrapper = document.getElementById(`wrapper-${activeTargetIndex}`);
         if (wrapper) {
           wrapper.classList.remove('focusing');
         }
       }
-      activeTargetIndex = -1;
-      isSelected = false;
       clearTimeout(dwellTimer);
+      activeTargetIndex = -1;
     }
 
     function speak(text) {
@@ -512,7 +506,6 @@
       speechSynthesis.speak(uttr);
     }
 
-    loadSavedData();
     renderSetupForm();
   </script>
 
