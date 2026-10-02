@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>多機能VOCA（アラウンド枠線＆口閉じ検出＆プリセット付き）</title>
+  <title>多機能VOCA（写真・イラスト変更対応版）</title>
   <!-- MediaPipe Face Mesh & Camera Utils -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
@@ -60,17 +60,37 @@
     .item-config-box {
       border: 2px solid #555;
       border-radius: 8px;
-      padding: 12px;
+      padding: 15px;
       background: #2a2a2a;
     }
-    .item-config-box label { display: block; margin-top: 8px; font-weight: bold; font-size: 0.9rem; }
+    .item-config-box label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.95rem; color: #00ffcc; }
     .item-config-box input[type="text"] {
-      width: 100%; padding: 8px; margin-top: 4px;
-      background: #333; color: #fff; border: 1px solid #666; border-radius: 4px;
+      width: 100%; padding: 10px; margin-top: 6px;
+      background: #333; color: #fff; border: 1px solid #666; border-radius: 6px; font-size: 1rem;
+    }
+    .file-input-wrapper {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .file-input-btn {
+      background: #444; color: #fff; border: 1px solid #777;
+      padding: 8px 12px; border-radius: 6px; cursor: pointer; text-align: center;
+      font-size: 0.9rem; font-weight: bold;
+    }
+    .preview-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 10px;
+      background: #1a1a1a;
+      padding: 8px;
+      border-radius: 6px;
     }
     .preview-thumb {
-      width: 60px; height: 60px; object-fit: contain;
-      border: 1px solid #666; background: #fff; margin-top: 8px; border-radius: 4px;
+      width: 70px; height: 70px; object-fit: contain;
+      border: 1px solid #666; background: #000; border-radius: 6px;
     }
     .start-btn {
       background-color: #0d6efd; color: white;
@@ -118,7 +138,7 @@
     .play-container.mode-3 { grid-template-columns: 1fr 1fr 1fr; }
     .play-container.mode-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
 
-    /* SVGによるアラウンド枠線アニメーション構造 */
+    /* SVGによるアラウンド枠線アニメーション */
     .card-wrapper {
       position: relative;
       width: 60%;
@@ -140,7 +160,6 @@
       z-index: 1;
     }
 
-    /* SVG Progress Border */
     .border-svg {
       position: absolute;
       top: 0; left: 0;
@@ -164,10 +183,10 @@
       transition: stroke-dashoffset 0s linear;
     }
 
-    /* 選択中の演出 (2秒間かけて枠線が周回) */
+    /* 2秒間の枠周回アニメーション */
     .card-wrapper.focusing .border-progress {
       stroke-dashoffset: 0;
-      transition: stroke-dashoffset 2s linear; /* 2秒間アニメーション */
+      transition: stroke-dashoffset 2s linear;
     }
     .card-wrapper.focusing .card {
       transform: scale(1.03);
@@ -191,7 +210,7 @@
         <label><input type="radio" name="count" value="4" onchange="changeCount(4)"> 4択</label>
       </div>
 
-      <h2>2. サンプルプリセットの呼び出し</h2>
+      <h2>2. サンプルプリセットの選択</h2>
       <div class="preset-btns">
         <button class="preset-btn" onclick="applyPreset('fruit')">🍎 果物セット</button>
         <button class="preset-btn" onclick="applyPreset('color')">🎨 色セット</button>
@@ -200,7 +219,7 @@
     </div>
 
     <div class="setup-card">
-      <h2>3. 各枠の文字とイラスト設定</h2>
+      <h2>3. 各枠の文字・写真・イラスト設定</h2>
       <div class="item-config-grid" id="config-grid"></div>
     </div>
 
@@ -219,9 +238,8 @@
 
   <script>
     let currentCount = 2;
-    const DWELL_TIME_MS = 2000; // 2秒で固定
+    const DWELL_TIME_MS = 2000; // 2秒
 
-    // サンプルデータの定義
     const presets = {
       fruit: [
         { text: 'りんご', img: 'https://via.placeholder.com/200/ff4d4d/FFFFFF?text=りんご' },
@@ -267,6 +285,7 @@
       if (savedItems) items = JSON.parse(savedItems);
     }
 
+    // 設定画面の描画（ファイル選択・写真設定機能）
     function renderSetupForm() {
       const grid = document.getElementById('config-grid');
       grid.innerHTML = '';
@@ -277,10 +296,18 @@
           <h3>枠 ${i + 1}</h3>
           <label>表示・読み上げテキスト:</label>
           <input type="text" value="${items[i].text}" onchange="items[${i}].text=this.value">
-          <label>画像の変更:</label>
-          <input type="file" accept="image/*" onchange="updateImage(${i}, this)">
-          <div>
+          
+          <label>写真・イラストの指定:</label>
+          <div class="file-input-wrapper">
+            <input type="file" id="file-input-${i}" accept="image/*" style="display:none;" onchange="updateImage(${i}, this)">
+            <button type="button" class="file-input-btn" onclick="document.getElementById('file-input-${i}').click()">
+              📷 端末から写真・画像を選択
+            </button>
+          </div>
+
+          <div class="preview-container">
             <img src="${items[i].img}" id="preview-${i}" class="preview-thumb">
+            <span style="font-size:0.85rem; color:#aaa;">プレビュー表示</span>
           </div>
         `;
         grid.appendChild(box);
@@ -292,6 +319,7 @@
       renderSetupForm();
     }
 
+    // ユーザーが端末から写真/イラストを選択したときの処理
     function updateImage(index, input) {
       const file = input.files[0];
       if (file) {
@@ -332,7 +360,6 @@
         `;
         container.appendChild(wrapper);
 
-        // SVG周長パスの設定
         setTimeout(() => {
           const rect = document.getElementById(`progress-${i}`);
           if (rect) {
@@ -376,7 +403,6 @@
       camera.start();
     }
 
-    // 解析処理（顔向き・目線・口閉じ）
     function onFaceResults(results) {
       const statusEl = document.getElementById('face-status');
       if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
@@ -390,26 +416,22 @@
       const leftIris = landmarks[468];    // 左目黒目
       const rightIris = landmarks[473];   // 右目黒目
 
-      // 口の上下開閉距離の計算
+      // 口閉じ判定
       const upperLip = landmarks[13];
       const lowerLip = landmarks[14];
       const mouthDistance = Math.hypot(upperLip.x - lowerLip.x, upperLip.y - lowerLip.y);
-      const isMouthClosed = mouthDistance < 0.018; // 口をしっかり閉じている状態
+      const isMouthClosed = mouthDistance < 0.018;
 
-      // 平均座標（顔・目線）
       const avgX = (nose.x + leftIris.x + rightIris.x) / 3;
       const avgY = (nose.y + leftIris.y + rightIris.y) / 3;
 
       let targetIdx = -1;
 
-      // 口閉じアクションがある場合は優先判定
       if (isMouthClosed) {
-        // 口を閉じている場合は「現在顔が少しでも向いている方向」を選択
         if (avgX > 0.52) targetIdx = 0;
         else if (avgX < 0.48) targetIdx = (currentCount > 1) ? 1 : 0;
       }
 
-      // 口条件で決定しなかった場合、顔向き・目線で判定
       if (targetIdx === -1) {
         if (currentCount === 2) {
           if (avgX > 0.55) targetIdx = 0;
@@ -438,7 +460,6 @@
       }
     }
 
-    // フォーカス処理（2秒間の枠アニメーション実行）
     function handleFocus(index) {
       if (isSelected) return;
 
@@ -450,7 +471,6 @@
           wrapper.classList.add('focusing');
         }
 
-        // 2秒保持で確定
         dwellTimer = setTimeout(() => {
           triggerSelect(index);
         }, DWELL_TIME_MS);
